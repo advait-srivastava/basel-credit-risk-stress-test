@@ -1,0 +1,15 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.0.0/schema.json",
+  "name": "riskDrivers",
+  "displayName": "Risk Drivers",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280,
+  "visualInteractions": [
+    {
+      "source": "p2Scenario",
+      "target": "p2PdMatrix",
+      "type": "NoFilter"
+    }
+  ]
+}

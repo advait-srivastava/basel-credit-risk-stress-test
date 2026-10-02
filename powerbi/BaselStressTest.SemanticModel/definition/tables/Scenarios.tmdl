@@ -1,0 +1,52 @@
+/// Stress scenarios from basel_stress_test.py: systematic factor Z (0 = average, negative = recession)
+/// and the downturn LGD multiplier.
+table Scenarios
+
+	column Scenario
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: Scenario
+		sortByColumn: 'Scenario Order'
+
+	column 'Scenario Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Scenario Order
+
+	column 'Systematic Factor Z'
+		dataType: double
+		formatString: 0.0
+		summarizeBy: none
+		sourceColumn: Systematic Factor Z
+
+	column 'LGD Uplift'
+		dataType: double
+		formatString: 0.00"x"
+		summarizeBy: none
+		sourceColumn: LGD Uplift
+
+	partition Scenarios = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(DataUrl, [RelativePath = "scenarios.csv"]),
+				        [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(
+				        Promoted,
+				        {
+				            {"Scenario", type text},
+				            {"Scenario Order", Int64.Type},
+				            {"Systematic Factor Z", type number},
+				            {"LGD Uplift", type number}
+				        },
+				        "en-US"
+				    )
+				in
+				    Typed
+

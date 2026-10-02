@@ -1,0 +1,162 @@
+/// One row per loan: borrower, sector, rating, structure and collateral attributes, plus EAD.
+/// Amounts are INR crore. Source: generate_portfolio.py (seeded).
+table Loans
+
+	column 'Loan ID'
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: Loan ID
+
+	column 'Borrower ID'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Borrower ID
+
+	column Sector
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Sector
+
+	column 'Loan Type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Loan Type
+
+	column 'Credit Rating'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Credit Rating
+		sortByColumn: 'Rating Rank'
+
+	/// 1 = AAA (best) ... 7 = CCC (worst); sort key for Credit Rating.
+	column 'Rating Rank'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Rating Rank
+
+	column Seniority
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Seniority
+
+	column 'Collateral Type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Collateral Type
+
+	column 'Collateral Coverage'
+		dataType: double
+		formatString: 0%
+		summarizeBy: none
+		sourceColumn: Collateral Coverage
+
+	column 'Origination Date'
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: Origination Date
+
+	column 'Maturity Date'
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: Maturity Date
+
+	column 'Maturity Years'
+		dataType: double
+		formatString: 0.0
+		summarizeBy: none
+		sourceColumn: Maturity Years
+
+	column 'Committed Amount'
+		dataType: double
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Committed Amount
+
+	column 'Drawn Amount'
+		dataType: double
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Drawn Amount
+
+	column 'Undrawn Amount'
+		dataType: double
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Undrawn Amount
+
+	/// Credit conversion factor on the undrawn portion (0.75 for revolving, 0 for term loans).
+	column CCF
+		dataType: double
+		formatString: 0%
+		summarizeBy: none
+		sourceColumn: CCF
+
+	/// Exposure at default = drawn + CCF x undrawn, INR crore. Constant across scenarios.
+	column EAD
+		dataType: double
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: EAD
+
+	/// Unstressed 1-year PD from the rating table, with per-loan jitter.
+	column 'Base PD'
+		dataType: double
+		formatString: 0.00%
+		summarizeBy: none
+		sourceColumn: Base PD
+
+	column 'Base LGD'
+		dataType: double
+		formatString: 0.0%
+		summarizeBy: none
+		sourceColumn: Base LGD
+
+	column 'Interest Rate'
+		dataType: double
+		formatString: 0.00%
+		summarizeBy: none
+		sourceColumn: Interest Rate
+
+	partition Loans = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(DataUrl, [RelativePath = "loans.csv"]),
+				        [Delimiter = ",", Columns = 20, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(
+				        Promoted,
+				        {
+				            {"Loan ID", type text},
+				            {"Borrower ID", type text},
+				            {"Sector", type text},
+				            {"Loan Type", type text},
+				            {"Credit Rating", type text},
+				            {"Rating Rank", Int64.Type},
+				            {"Seniority", type text},
+				            {"Collateral Type", type text},
+				            {"Collateral Coverage", type number},
+				            {"Origination Date", type date},
+				            {"Maturity Date", type date},
+				            {"Maturity Years", type number},
+				            {"Committed Amount", type number},
+				            {"Drawn Amount", type number},
+				            {"Undrawn Amount", type number},
+				            {"CCF", type number},
+				            {"EAD", type number},
+				            {"Base PD", type number},
+				            {"Base LGD", type number},
+				            {"Interest Rate", type number}
+				        },
+				        "en-US"
+				    )
+				in
+				    Typed
+

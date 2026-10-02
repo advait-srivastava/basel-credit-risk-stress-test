@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "BaselStressTest"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "a3f19c58-6e2b-4d7a-b0c4-8e5d2f61a947"
+  }
+}

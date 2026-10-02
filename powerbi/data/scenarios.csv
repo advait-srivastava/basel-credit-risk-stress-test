@@ -1,0 +1,4 @@
+Scenario,Scenario Order,Systematic Factor Z,LGD Uplift
+Baseline,1,0.0,1.0
+Adverse,2,-1.5,1.15
+Severely Adverse,3,-2.5,1.3

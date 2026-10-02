@@ -1,0 +1,233 @@
+/// One row per loan x scenario: stressed PD/LGD, IRB capital charge K, RWA and expected loss (INR crore).
+/// Source: basel_stress_test.py logic, exported by powerbi/export_powerbi_data.py.
+///
+/// Scenario-dependent measures return BLANK unless exactly one scenario is in filter context,
+/// so they never silently add up Baseline + Adverse + Severely Adverse.
+table 'Stress Results'
+
+	measure 'Loan Count' = COUNTROWS ( Loans )
+		formatString: #,0
+		displayFolder: Portfolio
+
+	/// Exposure at default, INR crore. Identical in every scenario (CCF is not stressed).
+	measure 'Total EAD' = SUM ( Loans[EAD] )
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Portfolio
+
+	measure 'Expected Loss' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    SUM ( 'Stress Results'[Expected Loss] )
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Credit Risk
+
+	measure 'Required Capital' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    SUM ( 'Stress Results'[Required Capital] )
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Credit Risk
+
+	measure RWA =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    SUM ( 'Stress Results'[RWA] )
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Credit Risk
+
+	/// EAD-weighted average stressed PD.
+	measure 'Avg Stressed PD' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    DIVIDE (
+			        SUMX ( 'Stress Results', 'Stress Results'[Stressed PD] * 'Stress Results'[EAD] ),
+			        SUM ( 'Stress Results'[EAD] )
+			    )
+			)
+		formatString: 0.00%
+		displayFolder: Credit Risk
+
+	/// EAD-weighted average downturn LGD.
+	measure 'Avg Stressed LGD' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    DIVIDE (
+			        SUMX ( 'Stress Results', 'Stress Results'[Stressed LGD] * 'Stress Results'[EAD] ),
+			        SUM ( 'Stress Results'[EAD] )
+			    )
+			)
+		formatString: 0.0%
+		displayFolder: Credit Risk
+
+	/// Expected loss as a share of EAD.
+	measure 'EL Rate' = DIVIDE ( [Expected Loss], [Total EAD] )
+		formatString: 0.00%
+		displayFolder: Credit Risk
+
+	/// RWA per unit of EAD.
+	measure 'RWA Density' = DIVIDE ( [RWA], [Total EAD] )
+		formatString: 0.0%
+		displayFolder: Credit Risk
+
+	measure 'Baseline Expected Loss' =
+			CALCULATE (
+			    SUM ( 'Stress Results'[Expected Loss] ),
+			    Scenarios[Scenario] = "Baseline"
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Credit Risk
+
+	measure 'Baseline RWA' =
+			CALCULATE (
+			    SUM ( 'Stress Results'[RWA] ),
+			    Scenarios[Scenario] = "Baseline"
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Credit Risk
+
+	/// Expected loss as a multiple of the baseline expected loss.
+	measure 'EL vs Baseline' = DIVIDE ( [Expected Loss], [Baseline Expected Loss] )
+		formatString: 0.0"x"
+		displayFolder: Credit Risk
+
+	/// Assumed starting CET1 ratio on baseline RWA (CAPITAL_RATIO_START).
+	measure 'Starting CET1 Ratio' = 0.13
+		formatString: 0.0%
+		displayFolder: Capital Adequacy
+
+	/// 8% Pillar 1 + 2.5% capital conservation buffer (CAPITAL_RATIO_MIN).
+	measure 'Minimum CET1 Ratio' = 0.105
+		formatString: 0.0%
+		displayFolder: Capital Adequacy
+
+	measure 'Available Capital' = [Starting CET1 Ratio] * [Baseline RWA]
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Capital Adequacy
+
+	/// Stress losses above baseline EL (baseline EL is assumed already provisioned).
+	measure 'Incremental Expected Loss' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    MAX ( [Expected Loss] - [Baseline Expected Loss], 0 )
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Capital Adequacy
+
+	measure 'Capital After Stress' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    [Available Capital] - [Incremental Expected Loss]
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Capital Adequacy
+
+	measure 'Post-Stress CET1 Ratio' = DIVIDE ( [Capital After Stress], [RWA] )
+		formatString: 0.00%
+		displayFolder: Capital Adequacy
+
+	/// Capital needed to restore the minimum CET1 ratio on stressed RWA.
+	measure 'Capital Shortfall' =
+			IF (
+			    HASONEVALUE ( Scenarios[Scenario] ),
+			    MAX ( [Minimum CET1 Ratio] * [RWA] - [Capital After Stress], 0 )
+			)
+		formatString: ₹#,0.0 "cr"
+		displayFolder: Capital Adequacy
+
+	/// Post-stress CET1 ratio minus the minimum; negative means a breach.
+	measure 'CET1 Headroom' = [Post-Stress CET1 Ratio] - [Minimum CET1 Ratio]
+		formatString: +0.00%;-0.00%;0.00%
+		displayFolder: Capital Adequacy
+
+	column 'Loan ID'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Loan ID
+
+	column Scenario
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Scenario
+
+	column 'Stressed PD'
+		dataType: double
+		isHidden
+		formatString: 0.00%
+		summarizeBy: none
+		sourceColumn: Stressed PD
+
+	column 'Stressed LGD'
+		dataType: double
+		isHidden
+		formatString: 0.0%
+		summarizeBy: none
+		sourceColumn: Stressed LGD
+
+	column EAD
+		dataType: double
+		isHidden
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: EAD
+
+	/// Basel IRB capital requirement K as a fraction of EAD.
+	column 'Capital K'
+		dataType: double
+		isHidden
+		formatString: 0.00%
+		summarizeBy: none
+		sourceColumn: Capital K
+
+	column 'Required Capital'
+		dataType: double
+		isHidden
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Required Capital
+
+	column RWA
+		dataType: double
+		isHidden
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: RWA
+
+	column 'Expected Loss'
+		dataType: double
+		isHidden
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Expected Loss
+
+	partition 'Stress Results' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(
+				        Web.Contents(DataUrl, [RelativePath = "stress_results.csv"]),
+				        [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				    ),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(
+				        Promoted,
+				        {
+				            {"Loan ID", type text},
+				            {"Scenario", type text},
+				            {"Stressed PD", type number},
+				            {"Stressed LGD", type number},
+				            {"EAD", type number},
+				            {"Capital K", type number},
+				            {"Required Capital", type number},
+				            {"RWA", type number},
+				            {"Expected Loss", type number}
+				        },
+				        "en-US"
+				    )
+				in
+				    Typed
+

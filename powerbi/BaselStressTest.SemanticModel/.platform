@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "BaselStressTest"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "5b7e2c1a-9d43-4f0e-8a61-3c2f9e4d7b10"
+  }
+}
