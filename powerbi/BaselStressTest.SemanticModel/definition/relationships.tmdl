@@ -1,0 +1,8 @@
+relationship 7d0f6c2e-3b8a-4e51-9f27-1a6c4b8d2e90
+	fromColumn: 'Stress Results'.'Loan ID'
+	toColumn: Loans.'Loan ID'
+
+relationship c41e9a73-5f2d-4b06-8e3a-9b7d1f0c6a25
+	fromColumn: 'Stress Results'.Scenario
+	toColumn: Scenarios.Scenario
+

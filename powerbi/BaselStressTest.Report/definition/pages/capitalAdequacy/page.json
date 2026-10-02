@@ -1,0 +1,25 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.0.0/schema.json",
+  "name": "capitalAdequacy",
+  "displayName": "Capital Adequacy",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280,
+  "visualInteractions": [
+    {
+      "source": "p1Scenario",
+      "target": "p1Cet1",
+      "type": "NoFilter"
+    },
+    {
+      "source": "p1Scenario",
+      "target": "p1Shortfall",
+      "type": "NoFilter"
+    },
+    {
+      "source": "p1Scenario",
+      "target": "p1Rwa",
+      "type": "NoFilter"
+    }
+  ]
+}

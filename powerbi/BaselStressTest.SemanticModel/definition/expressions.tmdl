@@ -1,0 +1,11 @@
+/// Base URL of the folder holding the CSVs written by powerbi/export_powerbi_data.py.
+/// Defaults to this repo's main branch on GitHub; point it at a fork or another branch to refresh from there.
+expression DataUrl =
+		"https://raw.githubusercontent.com/advait-srivastava/basel-credit-risk-stress-test/main/powerbi/data/" meta [
+			IsParameterQuery = true,
+			Type = "Text",
+			IsParameterQueryRequired = true
+		]
+
+	annotation PBI_ResultType = Text
+
