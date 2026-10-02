@@ -17,7 +17,7 @@ table 'Stress Results'
 	measure 'Expected Loss' =
 			IF (
 			    HASONEVALUE ( Scenarios[Scenario] ),
-			    SUM ( 'Stress Results'[Expected Loss] )
+			    SUM ( 'Stress Results'[Loan Expected Loss] )
 			)
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Credit Risk
@@ -25,7 +25,7 @@ table 'Stress Results'
 	measure 'Required Capital' =
 			IF (
 			    HASONEVALUE ( Scenarios[Scenario] ),
-			    SUM ( 'Stress Results'[Required Capital] )
+			    SUM ( 'Stress Results'[Loan Required Capital] )
 			)
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Credit Risk
@@ -33,7 +33,7 @@ table 'Stress Results'
 	measure RWA =
 			IF (
 			    HASONEVALUE ( Scenarios[Scenario] ),
-			    SUM ( 'Stress Results'[RWA] )
+			    SUM ( 'Stress Results'[Loan RWA] )
 			)
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Credit Risk
@@ -74,7 +74,7 @@ table 'Stress Results'
 
 	measure 'Baseline Expected Loss' =
 			CALCULATE (
-			    SUM ( 'Stress Results'[Expected Loss] ),
+			    SUM ( 'Stress Results'[Loan Expected Loss] ),
 			    Scenarios[Scenario] = "Baseline"
 			)
 		formatString: ₹#,0.0 "cr"
@@ -82,7 +82,7 @@ table 'Stress Results'
 
 	measure 'Baseline RWA' =
 			CALCULATE (
-			    SUM ( 'Stress Results'[RWA] ),
+			    SUM ( 'Stress Results'[Loan RWA] ),
 			    Scenarios[Scenario] = "Baseline"
 			)
 		formatString: ₹#,0.0 "cr"
@@ -183,21 +183,21 @@ table 'Stress Results'
 		summarizeBy: none
 		sourceColumn: Capital K
 
-	column 'Required Capital'
+	column 'Loan Required Capital'
 		dataType: double
 		isHidden
 		formatString: #,0.00
 		summarizeBy: none
 		sourceColumn: Required Capital
 
-	column RWA
+	column 'Loan RWA'
 		dataType: double
 		isHidden
 		formatString: #,0.00
 		summarizeBy: none
 		sourceColumn: RWA
 
-	column 'Expected Loss'
+	column 'Loan Expected Loss'
 		dataType: double
 		isHidden
 		formatString: #,0.00
