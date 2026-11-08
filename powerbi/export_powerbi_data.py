@@ -18,16 +18,12 @@ Run from the repo root:
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from basel_stress_test import (  # noqa: E402
-    SCENARIOS, asset_correlation, basel_capital_ratio, capital_adequacy,
-    run_scenario, stressed_pd,
-)
+from basel_stress_test import SCENARIOS, capital_adequacy, loan_metrics, run_scenario  # noqa: E402
 from generate_portfolio import RATINGS, build_portfolio  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent / "data"
@@ -40,25 +36,21 @@ def build_loans(portfolio):
 
 
 def loan_scenario_results(loans):
-    base_pd = loans["base_pd"].to_numpy()
     ead = loans["ead_inr_cr"].to_numpy()
-    maturity = loans["maturity_years"].to_numpy()
 
     frames = []
     for name, cfg in SCENARIOS.items():
-        pd_s = stressed_pd(base_pd, asset_correlation(base_pd), cfg["Z"])
-        lgd_s = np.clip(loans["base_lgd"].to_numpy() * cfg["lgd_uplift"], 0, 0.95)
-        k = basel_capital_ratio(pd_s, lgd_s, maturity)
+        m = loan_metrics(loans, cfg["Z"], cfg["lgd_uplift"])
         frames.append(pd.DataFrame({
             "Loan ID": loans["loan_id"],
             "Scenario": name,
-            "Stressed PD": pd_s,
-            "Stressed LGD": lgd_s,
+            "Stressed PD": m["pd"],
+            "Stressed LGD": m["lgd"],
             "EAD": ead,
-            "Capital K": k,
-            "Required Capital": k * ead,
-            "RWA": k * ead * 12.5,
-            "Expected Loss": pd_s * lgd_s * ead,
+            "Capital K": m["k"],
+            "Required Capital": m["k"] * ead,
+            "RWA": m["k"] * ead * 12.5,
+            "Expected Loss": m["el"],
         }))
     return pd.concat(frames, ignore_index=True)
 

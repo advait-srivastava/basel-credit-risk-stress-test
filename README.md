@@ -51,27 +51,58 @@ K = LGD · [ Φ( (Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999)) / √(1−ρ) ) − PD ] 
 RWA = 12.5 · K · EAD          Required capital = K · EAD  (= 8% of RWA)
 ```
 
-**Capital adequacy** — the bank is assumed to start at a 13% CET1 ratio on
-baseline RWA. Under each scenario, capital is reduced by the *incremental*
-expected loss versus baseline (baseline EL is assumed already provisioned),
-and the resulting post-stress ratio is compared against a 10.5% regulatory
-minimum (8% Pillar 1 + 2.5% capital conservation buffer) to get the capital
-shortfall.
+PD is floored at the Basel III corporate minimum of 0.05% inside K (42 AAA/AA
+loans sit below it). M is each loan's residual maturity at the 31-Mar-2026
+as-of date, bounded to 1–5 years as Basel requires, not its original term.
 
-**Simplifications** — CCF is not stressed; the starting capital figure is an
-assumption, not a real reported CET1; and this uses static point-in-time
+**Rating migration (how stress reaches RWA)** — the IRB formula expects a
+long-run average PD and stresses it to the 99.9th percentile itself. Feeding it
+the scenario's conditional PD would stress the same systematic factor twice (a
+1-in-1000 year on top of the recession). So the stressed PD drives expected
+loss only, and RWA moves through downgrades instead: a CreditMetrics-style
+conditional transition matrix. Each grade's row of an illustrative one-year
+matrix (`TRANSITIONS`, S&P-shaped, default column set to the loan's own PD)
+defines asset-return thresholds. The same factor `Z` shifts every obligor
+across them, so the default probability is exactly `PD(Z)` above. K is then
+the probability-weighted IRB charge over the grades each loan can land in, at
+those grades' long-run PDs. The share that defaults leaves the performing book;
+its loss reaches capital through expected loss.
+
+| Scenario | EAD downgraded | EAD defaulted | RWA vs baseline |
+|---|---|---|---|
+| Baseline | 4.6% | 1.5% | 1.00x |
+| Adverse | 15.3% | 4.8% | 1.17x |
+| Severely Adverse | 26.5% | 9.6% | 1.32x |
+
+**Capital adequacy** — ratios are **total capital / RWA**. The bank is
+assumed to start at a 13% total capital ratio on baseline RWA. Under each
+scenario, capital is reduced by the *incremental* expected loss versus
+baseline (baseline EL is assumed already provisioned), and the resulting
+post-stress ratio is compared against 10.5%: the 8% Pillar 1 total capital
+minimum plus the 2.5% capital conservation buffer. The shortfall is the
+capital needed to restore that 10.5%. Dropping into the buffer restricts
+distributions rather than breaching the 8% minimum itself. For reference,
+the CET1-only equivalent is 4.5% + 2.5% = 7%, and RBI sets 11.5% total
+capital (9% + 2.5%) for Indian banks.
+
+**Simplifications** — CCF is not stressed; the transition matrix is
+illustrative rather than estimated from a bank's own rating history; the
+starting capital figure is an assumption, not a real reported capital ratio; and this uses static point-in-time
 exposures rather than a multi-year balance-sheet projection. Documented here
 rather than hidden in the code.
 
 ## Results (this seeded run)
 
-| Scenario | Avg. stressed PD | Avg. stressed LGD | Post-stress CET1 ratio | Capital shortfall (INR cr) |
+| Scenario | Avg. stressed PD | Avg. stressed LGD | Post-stress capital ratio | Capital shortfall (INR cr) |
 |---|---|---|---|---|
 | Baseline | 1.50% | 32.4% | 13.00% | 0 |
-| Adverse | 4.78% | 37.3% | 5.19% | 312.6 |
-| Severely Adverse | 9.63% | 42.2% | 2.10% | 739.3 |
+| Adverse | 4.78% | 37.3% | 9.31% | 45.3 |
+| Severely Adverse | 9.63% | 42.2% | 5.43% | 218.6 |
 
-on a ₹5,300 cr EAD portfolio. Full detail (loan-level and scenario-level) is
+on a ₹5,300 cr EAD portfolio, with baseline RWA of ₹3,259.8 cr. Holding RWA at
+baseline, the ratios would be 10.89% and 7.19%: losses drive 57% of the
+decline in Adverse and 77% in Severely Adverse, and downgrade-driven RWA growth
+the rest. Full detail (loan-level and scenario-level) is
 written to `stress_test_results.xlsx`; a two-panel chart of the capital ratio
 and shortfall by scenario is written to `capital_shortfall.png`.
 

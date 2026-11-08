@@ -24,7 +24,7 @@ trailing slash.
 
 | Page | What it shows |
 |---|---|
-| **Capital Adequacy** | KPI cards for the selected scenario (EAD, expected loss, RWA, post-stress CET1 ratio, capital shortfall), plus CET1 ratio vs the 10.5% minimum, shortfall and RWA across all three scenarios |
+| **Capital Adequacy** | KPI cards for the selected scenario (EAD, expected loss, RWA, post-stress capital ratio, capital shortfall), plus total capital ratio vs the 10.5% minimum, shortfall and RWA across all three scenarios |
 | **Risk Drivers** | Expected loss by sector and by collateral type, RWA density by rating, and a rating × scenario matrix of stressed PD. Slicers for scenario, sector, rating and seniority |
 | **Loan Detail** | Stressed PD vs stressed LGD for every loan (bubble size = EAD, colour = seniority) next to a table of loans ranked by expected loss |
 
@@ -38,7 +38,7 @@ Measures live on `Stress Results`, grouped into display folders:
 
 - **Portfolio:** Loan Count, Total EAD
 - **Credit Risk:** Expected Loss, Required Capital, RWA, Avg Stressed PD / LGD (EAD-weighted), EL Rate, RWA Density, Baseline Expected Loss / RWA, EL vs Baseline
-- **Capital Adequacy:** Starting CET1 Ratio (13%), Minimum CET1 Ratio (10.5%), Available Capital, Incremental Expected Loss, Capital After Stress, Post-Stress CET1 Ratio, Capital Shortfall, CET1 Headroom
+- **Capital Adequacy:** Starting Capital Ratio (13%), Minimum Capital Ratio (10.5%), Available Capital, Incremental Expected Loss, Capital After Stress, Post-Stress Capital Ratio, Capital Shortfall, Capital Headroom
 
 The capital adequacy measures use the same logic as `capital_adequacy()` in
 `basel_stress_test.py`: available capital is 13% of baseline RWA, only expected loss
@@ -48,11 +48,11 @@ in context, so they never add the three scenarios together.
 
 With no filters applied, the dashboard should match the script:
 
-| Scenario | Expected loss | RWA | Post-stress CET1 | Capital shortfall |
+| Scenario | Expected loss | RWA | Post-stress capital ratio | Capital shortfall |
 |---|---|---|---|---|
-| Baseline | ₹26.2 cr | ₹2,879.6 cr | 13.00% | ₹0.0 cr |
-| Adverse | ₹95.1 cr | ₹5,886.7 cr | 5.19% | ₹312.6 cr |
-| Severely Adverse | ₹215.6 cr | ₹8,802.6 cr | 2.10% | ₹739.3 cr |
+| Baseline | ₹26.2 cr | ₹3,259.8 cr | 13.00% | ₹0.0 cr |
+| Adverse | ₹95.1 cr | ₹3,812.0 cr | 9.31% | ₹45.3 cr |
+| Severely Adverse | ₹215.6 cr | ₹4,313.8 cr | 5.43% | ₹218.6 cr |
 
 Filtering by sector, rating, etc. recomputes these figures for that slice of the
 portfolio, as if it were a standalone book.

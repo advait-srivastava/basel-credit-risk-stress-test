@@ -86,9 +86,12 @@ def build_portfolio():
         np.round(rng.uniform(3, 10, size=n), 1),
         1.0,  # revolving facilities renewed annually
     )
-    origination_offset_days = rng.integers(30, 1500, size=n)
+    term_days = (maturity_years * 365.25).astype(int)
+    # Every loan is still live at the as-of date: originated at least 30 days before it matures
+    # (revolvers within the last year, since they renew annually).
+    origination_offset_days = np.minimum(rng.integers(30, 1500, size=n), term_days - 30)
     origination_date = AS_OF_DATE - pd.to_timedelta(origination_offset_days, unit="D")
-    maturity_date = origination_date + pd.to_timedelta((maturity_years * 365.25).astype(int), unit="D")
+    maturity_date = origination_date + pd.to_timedelta(term_days, unit="D")
 
     collateral_type, collateral_coverage = sample_collateral(n, seniority)
     effectiveness = np.array([COLLATERAL_EFFECTIVENESS[c] for c in collateral_type])

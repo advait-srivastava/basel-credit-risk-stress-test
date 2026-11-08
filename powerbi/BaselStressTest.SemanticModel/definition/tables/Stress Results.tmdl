@@ -93,17 +93,17 @@ table 'Stress Results'
 		formatString: 0.0"x"
 		displayFolder: Credit Risk
 
-	/// Assumed starting CET1 ratio on baseline RWA (CAPITAL_RATIO_START).
-	measure 'Starting CET1 Ratio' = 0.13
+	/// Assumed starting total capital ratio on baseline RWA (CAPITAL_RATIO_START).
+	measure 'Starting Capital Ratio' = 0.13
 		formatString: 0.0%
 		displayFolder: Capital Adequacy
 
 	/// 8% Pillar 1 + 2.5% capital conservation buffer (CAPITAL_RATIO_MIN).
-	measure 'Minimum CET1 Ratio' = 0.105
+	measure 'Minimum Capital Ratio' = 0.105
 		formatString: 0.0%
 		displayFolder: Capital Adequacy
 
-	measure 'Available Capital' = [Starting CET1 Ratio] * [Baseline RWA]
+	measure 'Available Capital' = [Starting Capital Ratio] * [Baseline RWA]
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Capital Adequacy
 
@@ -124,21 +124,21 @@ table 'Stress Results'
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Capital Adequacy
 
-	measure 'Post-Stress CET1 Ratio' = DIVIDE ( [Capital After Stress], [RWA] )
+	measure 'Post-Stress Capital Ratio' = DIVIDE ( [Capital After Stress], [RWA] )
 		formatString: 0.00%
 		displayFolder: Capital Adequacy
 
-	/// Capital needed to restore the minimum CET1 ratio on stressed RWA.
+	/// Capital needed to restore the minimum total capital ratio on stressed RWA.
 	measure 'Capital Shortfall' =
 			IF (
 			    HASONEVALUE ( Scenarios[Scenario] ),
-			    MAX ( [Minimum CET1 Ratio] * [RWA] - [Capital After Stress], 0 )
+			    MAX ( [Minimum Capital Ratio] * [RWA] - [Capital After Stress], 0 )
 			)
 		formatString: ₹#,0.0 "cr"
 		displayFolder: Capital Adequacy
 
-	/// Post-stress CET1 ratio minus the minimum; negative means a breach.
-	measure 'CET1 Headroom' = [Post-Stress CET1 Ratio] - [Minimum CET1 Ratio]
+	/// Post-stress capital ratio minus the minimum; negative means a breach.
+	measure 'Capital Headroom' = [Post-Stress Capital Ratio] - [Minimum Capital Ratio]
 		formatString: +0.00%;-0.00%;0.00%
 		displayFolder: Capital Adequacy
 
