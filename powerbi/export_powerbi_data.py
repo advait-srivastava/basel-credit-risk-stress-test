@@ -1,16 +1,14 @@
-"""Export the stress test as flat CSVs for the Power BI dashboard.
+"""Write the CSVs the Power BI dashboard loads, into powerbi/data/.
 
-Rebuilds the seeded portfolio from generate_portfolio.py and re-runs the same
-PD/LGD/EAD -> IRB capital calculation as basel_stress_test.py, but keeps the
-loan x scenario detail instead of collapsing it to a scenario summary, so the
-dashboard can slice capital and expected loss by sector, rating, seniority, etc.
+The dashboard needs every loan in every scenario so it can slice by sector or
+rating, which the three-row summary can't do. This rebuilds the seeded book and
+reuses basel_stress_test.py's functions, so the numbers can't drift from the script.
 
-Writes to powerbi/data/:
-  loans.csv            one row per loan (dimension attributes + EAD)
-  scenarios.csv        one row per scenario (Z, LGD uplift, sort order)
-  stress_results.csv   one row per loan x scenario (stressed PD/LGD, K, RWA, EL)
-  scenario_summary.csv portfolio-level capital adequacy per scenario, used to
-                       reconcile the dashboard's DAX measures against the script
+  loans.csv             one row per loan: attributes and EAD
+  scenarios.csv         one row per scenario: Z, LGD uplift, sort order
+  stress_results.csv    one row per loan per scenario: stressed PD/LGD, K, RWA, EL
+  scenario_summary.csv  portfolio totals per scenario. Not loaded into the model;
+                        it's there to check the DAX measures against.
 
 Run from the repo root:
     python3 powerbi/export_powerbi_data.py
@@ -23,46 +21,19 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from basel_stress_test import SCENARIOS, capital_adequacy, loan_metrics, run_scenario  # noqa: E402
+from basel_stress_test import SCENARIOS, add_ead, loan_results, scenario_summary  # noqa: E402
 from generate_portfolio import RATINGS, build_portfolio  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent / "data"
 
 
-def build_loans(portfolio):
-    df = portfolio.copy()
-    df["ead_inr_cr"] = df["drawn_amount_inr_cr"] + df["ccf"] * df["undrawn_amount_inr_cr"]
-    return df
-
-
-def loan_scenario_results(loans):
-    ead = loans["ead_inr_cr"].to_numpy()
-
-    frames = []
-    for name, cfg in SCENARIOS.items():
-        m = loan_metrics(loans, cfg["Z"], cfg["lgd_uplift"])
-        frames.append(pd.DataFrame({
-            "Loan ID": loans["loan_id"],
-            "Scenario": name,
-            "Stressed PD": m["pd"],
-            "Stressed LGD": m["lgd"],
-            "EAD": ead,
-            "Capital K": m["k"],
-            "Required Capital": m["k"] * ead,
-            "RWA": m["k"] * ead * 12.5,
-            "Expected Loss": m["el"],
-        }))
-    return pd.concat(frames, ignore_index=True)
-
-
 def main():
     OUT_DIR.mkdir(exist_ok=True)
-    loans = build_loans(build_portfolio())
+    loans = add_ead(build_portfolio())
 
-    rating_rank = {r: i + 1 for i, r in enumerate(RATINGS)}
+    rating_rank = {r: i + 1 for i, r in enumerate(RATINGS)}  # so Power BI sorts AAA..CCC, not alphabetically
     loans_out = pd.DataFrame({
         "Loan ID": loans["loan_id"],
-        "Borrower ID": loans["borrower_id"],
         "Sector": loans["sector"],
         "Loan Type": loans["loan_type"],
         "Credit Rating": loans["credit_rating"],
@@ -80,7 +51,6 @@ def main():
         "EAD": loans["ead_inr_cr"],
         "Base PD": loans["base_pd"],
         "Base LGD": loans["base_lgd"],
-        "Interest Rate": loans["interest_rate"],
     })
 
     scenarios_out = pd.DataFrame([
@@ -89,13 +59,8 @@ def main():
         for i, (name, cfg) in enumerate(SCENARIOS.items())
     ])
 
-    results_out = loan_scenario_results(loans)
-
-    # Same scenario summary basel_stress_test.py prints, for reconciliation.
-    summary = pd.DataFrame([
-        run_scenario(loans, name, cfg["Z"], cfg["lgd_uplift"]) for name, cfg in SCENARIOS.items()
-    ])
-    summary = summary.merge(capital_adequacy(summary), on="scenario")
+    results_out = loan_results(loans)
+    summary = scenario_summary(loans)
 
     loans_out.to_csv(OUT_DIR / "loans.csv", index=False, float_format="%.10f")
     scenarios_out.to_csv(OUT_DIR / "scenarios.csv", index=False)

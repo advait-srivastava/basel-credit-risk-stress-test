@@ -1,4 +1,4 @@
-/// One row per loan: borrower, sector, rating, structure and collateral attributes, plus EAD.
+/// One row per loan: sector, rating, structure and collateral attributes, plus EAD.
 /// Amounts are INR crore. Source: generate_portfolio.py (seeded).
 table Loans
 
@@ -7,11 +7,6 @@ table Loans
 		isKey
 		summarizeBy: none
 		sourceColumn: Loan ID
-
-	column 'Borrower ID'
-		dataType: string
-		summarizeBy: none
-		sourceColumn: Borrower ID
 
 	column Sector
 		dataType: string
@@ -116,26 +111,19 @@ table Loans
 		summarizeBy: none
 		sourceColumn: Base LGD
 
-	column 'Interest Rate'
-		dataType: double
-		formatString: 0.00%
-		summarizeBy: none
-		sourceColumn: Interest Rate
-
 	partition Loans = m
 		mode: import
 		source =
 				let
 				    Source = Csv.Document(
 				        Web.Contents(DataUrl, [RelativePath = "loans.csv"]),
-				        [Delimiter = ",", Columns = 20, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+				        [Delimiter = ",", Columns = 18, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
 				    ),
 				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
 				    Typed = Table.TransformColumnTypes(
 				        Promoted,
 				        {
 				            {"Loan ID", type text},
-				            {"Borrower ID", type text},
 				            {"Sector", type text},
 				            {"Loan Type", type text},
 				            {"Credit Rating", type text},
@@ -152,8 +140,7 @@ table Loans
 				            {"CCF", type number},
 				            {"EAD", type number},
 				            {"Base PD", type number},
-				            {"Base LGD", type number},
-				            {"Interest Rate", type number}
+				            {"Base LGD", type number}
 				        },
 				        "en-US"
 				    )

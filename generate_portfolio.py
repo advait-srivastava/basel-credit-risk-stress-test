@@ -1,9 +1,9 @@
-"""Generate a synthetic corporate loan portfolio as the input for the stress test.
+"""Build the synthetic loan book the stress test runs on, and save it as loan_portfolio.xlsx.
 
-Produces loan_portfolio.xlsx: one row per loan, with the exposure, rating, and
-collateral fields the Basel IRB capital formula needs (PD comes from the rating
-via RATING_PD, LGD and EAD are derived per-loan below). Everything is random
-but seeded, so re-running this script reproduces the same portfolio.
+750 corporate loans, one row each, carrying what the IRB formula needs: a rating
+(which sets PD through RATING_PD), seniority and collateral (which set LGD), and
+drawn/undrawn amounts (which set EAD). The seed is fixed, so every run produces
+the same book.
 """
 import numpy as np
 import pandas as pd
@@ -14,13 +14,13 @@ AS_OF_DATE = pd.Timestamp("2026-03-31")
 
 rng = np.random.default_rng(SEED)
 
-# Illustrative 1-year average default rates by rating grade (S&P/Moody's-style).
+# One-year default rates by grade, roughly in line with S&P/Moody's long-run averages.
 RATING_PD = {
     "AAA": 0.0002, "AA": 0.0005, "A": 0.0010,
     "BBB": 0.0030, "BB": 0.0150, "B": 0.0500, "CCC": 0.1500,
 }
 RATINGS = list(RATING_PD.keys())
-RATING_WEIGHTS = [0.03, 0.07, 0.15, 0.30, 0.25, 0.15, 0.05]  # skewed to mid-grade
+RATING_WEIGHTS = [0.03, 0.07, 0.15, 0.30, 0.25, 0.15, 0.05]  # most of the book sits at BBB/BB
 
 SECTORS = [
     "Manufacturing", "IT Services", "Real Estate", "Infrastructure",
@@ -33,11 +33,11 @@ LOAN_TYPE_WEIGHTS = [0.65, 0.35]
 
 SENIORITY = ["Senior Secured", "Senior Unsecured", "Subordinated"]
 SENIORITY_WEIGHTS = [0.55, 0.35, 0.10]
-# Base LGD floor by seniority before any collateral offset.
+# LGD before collateral is taken into account.
 SENIORITY_LGD_FLOOR = {"Senior Secured": 0.35, "Senior Unsecured": 0.45, "Subordinated": 0.65}
 
-COLLATERAL_TYPES = ["Unsecured", "Receivables", "Plant & Machinery", "Real Estate", "Cash / Marketable Securities"]
-# How much of the collateral's coverage ratio actually offsets LGD (liquidity/volatility of the asset).
+# Share of collateral coverage that actually reduces LGD. Cash can be sold the next day;
+# a factory can't, and usually goes for well under book.
 COLLATERAL_EFFECTIVENESS = {
     "Unsecured": 0.0, "Receivables": 0.50, "Plant & Machinery": 0.40,
     "Real Estate": 0.60, "Cash / Marketable Securities": 0.90,
@@ -49,7 +49,7 @@ def sample_ratings(n):
 
 
 def sample_collateral(n, seniority):
-    # Secured tranches get a real collateral type; unsecured tranches get none.
+    # Secured loans always have collateral. 20% of the rest have some receivables or machinery.
     ctype = np.where(
         seniority == "Senior Secured",
         rng.choice(["Receivables", "Plant & Machinery", "Real Estate", "Cash / Marketable Securities"], size=n),
@@ -65,30 +65,30 @@ def sample_collateral(n, seniority):
 def build_portfolio():
     n = N_LOANS
     ratings = sample_ratings(n)
-    base_pd = np.array([RATING_PD[r] for r in ratings]) * rng.uniform(0.85, 1.15, size=n)  # idiosyncratic jitter
+    base_pd = np.array([RATING_PD[r] for r in ratings]) * rng.uniform(0.85, 1.15, size=n)  # +/-15% per loan
 
     sectors = rng.choice(SECTORS, size=n)
     loan_types = rng.choice(LOAN_TYPES, size=n, p=LOAN_TYPE_WEIGHTS)
     seniority = rng.choice(SENIORITY, size=n, p=SENIORITY_WEIGHTS)
 
-    # Loan sizes: heavy-tailed, in INR crore (1 crore = 10 million INR).
+    # Lognormal sizes in INR crore (1 cr = 10 million rupees), so a few big loans dominate.
     committed_cr = np.round(rng.lognormal(mean=1.5, sigma=1.0, size=n), 2)
     committed_cr = np.clip(committed_cr, 0.25, 250.0)
 
-    # Term loans are fully drawn; revolving facilities carry an undrawn portion.
+    # Term loans are fully drawn. Revolvers are 10-95% used.
     utilization = np.where(loan_types == "Term Loan", 1.0, np.clip(rng.normal(0.55, 0.15, size=n), 0.10, 0.95))
     drawn_cr = np.round(committed_cr * utilization, 2)
     undrawn_cr = np.round(committed_cr - drawn_cr, 2)
-    ccf = np.where(loan_types == "Term Loan", 0.0, 0.75)  # standard commitment CCF
+    ccf = np.where(loan_types == "Term Loan", 0.0, 0.75)
 
     maturity_years = np.where(
         loan_types == "Term Loan",
         np.round(rng.uniform(3, 10, size=n), 1),
-        1.0,  # revolving facilities renewed annually
+        1.0,  # revolvers renew every year
     )
     term_days = (maturity_years * 365.25).astype(int)
-    # Every loan is still live at the as-of date: originated at least 30 days before it matures
-    # (revolvers within the last year, since they renew annually).
+    # Originated at least 30 days before maturity, so nothing in the book has already matured
+    # on the as-of date. For revolvers that means the current facility started within the year.
     origination_offset_days = np.minimum(rng.integers(30, 1500, size=n), term_days - 30)
     origination_date = AS_OF_DATE - pd.to_timedelta(origination_offset_days, unit="D")
     maturity_date = origination_date + pd.to_timedelta(term_days, unit="D")
@@ -101,11 +101,8 @@ def build_portfolio():
         0.10, 0.95,
     )
 
-    interest_rate = np.round(0.06 + base_pd * 8 + rng.normal(0, 0.005, size=n), 4)  # crude risk-based pricing
-
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "loan_id": [f"LN{i+1:05d}" for i in range(n)],
-        "borrower_id": [f"BRW{i+1:05d}" for i in range(n)],
         "sector": sectors,
         "loan_type": loan_types,
         "credit_rating": ratings,
@@ -121,23 +118,14 @@ def build_portfolio():
         "collateral_type": collateral_type,
         "collateral_coverage_ratio": np.round(collateral_coverage, 3),
         "base_lgd": np.round(base_lgd, 4),
-        "interest_rate": interest_rate,
     })
-    return df
 
 
 if __name__ == "__main__":
     portfolio = build_portfolio()
+    portfolio.to_excel("loan_portfolio.xlsx", sheet_name="Loans", index=False)
 
-    with pd.ExcelWriter("loan_portfolio.xlsx", engine="openpyxl") as writer:
-        portfolio.to_excel(writer, sheet_name="Loans", index=False)
-        pd.DataFrame(
-            {"rating": RATINGS, "avg_1y_pd": [RATING_PD[r] for r in RATINGS]}
-        ).to_excel(writer, sheet_name="Rating_PD_Reference", index=False)
-
-    total_committed = portfolio["committed_amount_inr_cr"].sum()
-    total_drawn = portfolio["drawn_amount_inr_cr"].sum()
     print(f"Generated {len(portfolio)} loans -> loan_portfolio.xlsx")
-    print(f"Total committed exposure: INR {total_committed:,.1f} cr")
-    print(f"Total drawn exposure:     INR {total_drawn:,.1f} cr")
+    print(f"Total committed exposure: INR {portfolio['committed_amount_inr_cr'].sum():,.1f} cr")
+    print(f"Total drawn exposure:     INR {portfolio['drawn_amount_inr_cr'].sum():,.1f} cr")
     print(portfolio["credit_rating"].value_counts().reindex(RATINGS))

@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Loan detail — stressed PD, LGD and loss per loan",
+                    "value": "Every loan's stressed PD, LGD and expected loss",
                     "textStyle": {
                       "fontFamily": "Segoe UI Semibold",
                       "fontSize": "18pt",
