@@ -51,6 +51,25 @@ K = LGD · [ Φ( (Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999)) / √(1−ρ) ) − PD ] 
 RWA = 12.5 · K · EAD          Required capital = K · EAD  (= 8% of RWA)
 ```
 
+**Rating migration (how stress reaches RWA)** — the IRB formula expects a
+long-run average PD and stresses it to the 99.9th percentile itself. Feeding it
+the scenario's conditional PD would stress the same systematic factor twice (a
+1-in-1000 year on top of the recession). So the stressed PD drives expected
+loss only, and RWA moves through downgrades instead: a CreditMetrics-style
+conditional transition matrix. Each grade's row of an illustrative one-year
+matrix (`TRANSITIONS`, S&P-shaped, default column set to the loan's own PD)
+defines asset-return thresholds. The same factor `Z` shifts every obligor
+across them, so the default probability is exactly `PD(Z)` above. K is then
+the probability-weighted IRB charge over the grades each loan can land in, at
+those grades' long-run PDs. The share that defaults leaves the performing book;
+its loss reaches capital through expected loss.
+
+| Scenario | EAD downgraded | EAD defaulted | RWA vs baseline |
+|---|---|---|---|
+| Baseline | 4.6% | 1.5% | 1.00x |
+| Adverse | 15.3% | 4.8% | 1.17x |
+| Severely Adverse | 26.5% | 9.6% | 1.32x |
+
 **Capital adequacy** — the bank is assumed to start at a 13% CET1 ratio on
 baseline RWA. Under each scenario, capital is reduced by the *incremental*
 expected loss versus baseline (baseline EL is assumed already provisioned),
@@ -58,8 +77,9 @@ and the resulting post-stress ratio is compared against a 10.5% regulatory
 minimum (8% Pillar 1 + 2.5% capital conservation buffer) to get the capital
 shortfall.
 
-**Simplifications** — CCF is not stressed; the starting capital figure is an
-assumption, not a real reported CET1; and this uses static point-in-time
+**Simplifications** — CCF is not stressed; the transition matrix is
+illustrative rather than estimated from a bank's own rating history; the
+starting capital figure is an assumption, not a real reported CET1; and this uses static point-in-time
 exposures rather than a multi-year balance-sheet projection. Documented here
 rather than hidden in the code.
 
@@ -68,10 +88,10 @@ rather than hidden in the code.
 | Scenario | Avg. stressed PD | Avg. stressed LGD | Post-stress CET1 ratio | Capital shortfall (INR cr) |
 |---|---|---|---|---|
 | Baseline | 1.50% | 32.4% | 13.00% | 0 |
-| Adverse | 4.78% | 37.3% | 5.19% | 312.6 |
-| Severely Adverse | 9.63% | 42.2% | 2.10% | 739.3 |
+| Adverse | 4.78% | 37.3% | 9.49% | 42.2 |
+| Severely Adverse | 9.63% | 42.2% | 5.84% | 219.3 |
 
-on a ₹5,300 cr EAD portfolio. Full detail (loan-level and scenario-level) is
+on a ₹5,300 cr EAD portfolio, with baseline RWA of ₹3,567.7 cr. Full detail (loan-level and scenario-level) is
 written to `stress_test_results.xlsx`; a two-panel chart of the capital ratio
 and shortfall by scenario is written to `capital_shortfall.png`.
 

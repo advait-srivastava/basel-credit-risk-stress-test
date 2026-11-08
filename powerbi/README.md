@@ -50,9 +50,9 @@ With no filters applied, the dashboard should match the script:
 
 | Scenario | Expected loss | RWA | Post-stress CET1 | Capital shortfall |
 |---|---|---|---|---|
-| Baseline | ₹26.2 cr | ₹2,879.6 cr | 13.00% | ₹0.0 cr |
-| Adverse | ₹95.1 cr | ₹5,886.7 cr | 5.19% | ₹312.6 cr |
-| Severely Adverse | ₹215.6 cr | ₹8,802.6 cr | 2.10% | ₹739.3 cr |
+| Baseline | ₹26.2 cr | ₹3,567.7 cr | 13.00% | ₹0.0 cr |
+| Adverse | ₹95.1 cr | ₹4,163.8 cr | 9.49% | ₹42.2 cr |
+| Severely Adverse | ₹215.6 cr | ₹4,701.8 cr | 5.84% | ₹219.3 cr |
 
 Filtering by sector, rating, etc. recomputes these figures for that slice of the
 portfolio, as if it were a standalone book.
