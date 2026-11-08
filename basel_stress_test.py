@@ -25,22 +25,24 @@ losses only. Feeding it into the capital formula would stress the same
 systematic factor twice; rating migration is how the scenario reaches RWA.
 
 Simplifications (see README): CCF is not stressed, starting capital is an
-assumed ratio rather than an actual reported CET1 figure, and baseline EL is
+assumed ratio rather than an actual reported capital figure, and baseline EL is
 assumed already provisioned so only incremental stress losses hit capital.
 """
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from generate_portfolio import RATING_PD, RATINGS
+from generate_portfolio import AS_OF_DATE, RATING_PD, RATINGS
 
 INPUT_FILE = "loan_portfolio.xlsx"
 OUTPUT_FILE = "stress_test_results.xlsx"
 CHART_FILE = "capital_shortfall.png"
 
 CONFIDENCE = 0.999          # Basel IRB target solvency confidence
-CAPITAL_RATIO_START = 0.13  # bank's assumed starting CET1 ratio (above the regulatory minimum)
-CAPITAL_RATIO_MIN = 0.105   # 8% Pillar 1 + 2.5% capital conservation buffer
+# Ratios are total capital / RWA. The CET1-only equivalent minimum would be 4.5% + 2.5% = 7%.
+CAPITAL_RATIO_START = 0.13  # bank's assumed starting total capital ratio (above the minimum)
+CAPITAL_RATIO_MIN = 0.105   # 8% Pillar 1 total capital minimum + 2.5% capital conservation buffer
+PD_FLOOR = 0.0005           # Basel III corporate IRB PD floor (0.05%)
 
 # Scenarios: Z is the standardized systematic risk factor (0 = average conditions,
 # negative = recession). lgd_uplift scales base LGD to a "downturn LGD".
@@ -105,6 +107,7 @@ def migration_probs(base_pd, grade, rho, z):
 
 def basel_capital_ratio(pd_, lgd, maturity):
     """Basel corporate IRB capital requirement K, as a fraction of EAD."""
+    pd_ = np.maximum(pd_, PD_FLOOR)
     rho = asset_correlation(pd_)
     ma = maturity_adjustment(pd_, maturity)
     wcdr = norm.cdf((norm.ppf(pd_) + np.sqrt(rho) * norm.ppf(CONFIDENCE)) / np.sqrt(1 - rho))
@@ -124,7 +127,8 @@ def loan_metrics(df, z, lgd_uplift):
     rho = asset_correlation(base_pd)
     grade = df["credit_rating"].map(RATINGS.index).to_numpy()
     lgd_s = np.clip(df["base_lgd"].to_numpy() * lgd_uplift, 0, 0.95)
-    maturity = df["maturity_years"].to_numpy()
+    # Effective maturity M is the time remaining at the as-of date, not the original term.
+    maturity = ((pd.to_datetime(df["maturity_date"]) - AS_OF_DATE).dt.days / 365.25).to_numpy()
 
     pd_s = stressed_pd(base_pd, rho, z)
     _, p_grades = migration_probs(base_pd, grade, rho, z)
@@ -212,7 +216,7 @@ def make_chart(summary):
     ax = axes[0]
     ax.bar(summary["scenario"], summary["post_stress_capital_ratio"] * 100, color="#2f6f5e")
     ax.axhline(CAPITAL_RATIO_MIN * 100, color="#b23a2f", linestyle="--", label=f"Min. required ({CAPITAL_RATIO_MIN:.1%})")
-    ax.set_ylabel("Post-stress CET1 ratio (%)")
+    ax.set_ylabel("Post-stress total capital ratio (%)")
     ax.set_title("Capital ratio by scenario")
     ax.legend()
 

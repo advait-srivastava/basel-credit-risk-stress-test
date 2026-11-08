@@ -440,7 +440,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'RWA inflation is what drives the CET1 ratio down'"
+                  "Value": "'RWA rises as stressed loans are downgraded'"
                 }
               }
             },

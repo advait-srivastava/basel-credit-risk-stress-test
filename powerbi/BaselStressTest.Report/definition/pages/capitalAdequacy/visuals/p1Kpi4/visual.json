@@ -23,12 +23,12 @@
                       "Entity": "Stress Results"
                     }
                   },
-                  "Property": "Post-Stress CET1 Ratio"
+                  "Property": "Post-Stress Capital Ratio"
                 }
               },
-              "queryRef": "Stress Results.Post-Stress CET1 Ratio",
-              "nativeQueryRef": "Post-stress CET1 ratio",
-              "displayName": "Post-stress CET1 ratio"
+              "queryRef": "Stress Results.Post-Stress Capital Ratio",
+              "nativeQueryRef": "Post-stress capital ratio",
+              "displayName": "Post-stress capital ratio"
             }
           ]
         }
